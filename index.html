@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Healthcare App</title>
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAXwZjPuXKJaDRNBf3qGc_sTTz5P4qB-NA&callback=initMap"
+      async
+      defer
+    ></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #333;
+      }
+      #map {
+        height: 400px;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      #hospital-list {
+        margin-top: 20px;
+        padding: 0;
+        list-style-type: none;
+      }
+      #hospital-list li {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background: #f9f9f9;
+      }
+      select,
+      input,
+      button {
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        width: 100%;
+        max-width: 300px;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      nav {
+        display: flex;
+        justify-content: space-around;
+        background-color: #007bff;
+        color: white;
+        padding: 10px;
+        margin-bottom: 20px;
+      }
+      nav a {
+        color: white;
+        text-decoration: none;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      nav a:hover {
+        text-decoration: underline;
+      }
+      #sections > div {
+        display: none;
+      }
+      #sections > div.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Healthcare App</h1>
+
+    <!-- Navigation -->
+    <nav>
+      <a id="nav-home">Home</a>
+      <a id="nav-login">Login</a>
+      <a id="nav-register">Register</a>
+    </nav>
+
+    <div id="sections">
+      <!-- Home Section -->
+      <div id="home-section" class="active">
+        <!-- Hospital Dropdown -->
+        <h2>Select a Hospital</h2>
+        <select id="hospital-select" onchange="fetchDoctors()">
+          <option value="">Select a Hospital</option>
+        </select>
+
+        <!-- Doctor Dropdown -->
+        <h2>Select a Doctor</h2>
+        <select id="doctor-select">
+          <option value="">Select a Doctor</option>
+        </select>
+
+        <!-- Book Appointment Section -->
+        <h2>Book Appointment</h2>
+        <form id="appointment-form">
+          <select id="doctor-select">
+            <option value="1">Doctor 1</option>
+            <option value="2">Doctor 2</option>
+          </select>
+
+          <input type="date" id="appointment-date" />
+          <input type="time" id="appointment-time" />
+
+          <button type="submit">Book Appointment</button>
+        </form>
+
+        <!-- Nearby Hospitals Map -->
+        <h2>Nearby Hospitals</h2>
+        <div id="map"></div>
+
+        <!-- List of Nearby Hospitals -->
+        <h3>List of Nearby Hospitals:</h3>
+        <ul id="hospital-list"></ul>
+      </div>
+
+      <!-- Login Section -->
+      <div id="login-section">
+        <h2>Login</h2>
+        <form id="login-form">
+          <input type="email" id="email" placeholder="Email" required />
+          <input
+            type="password"
+            id="password"
+            placeholder="Password"
+            required
+          />
+          <button type="submit">Login</button>
+        </form>
+        <button id="logout-btn" style="display: none">Logout</button>
+      </div>
+
+      <!-- Register Section -->
+      <div id="register-section">
+        <h2>Register</h2>
+        <form id="register-form">
+          <input type="text" id="reg-name" placeholder="Name" required />
+          <input type="email" id="reg-email" placeholder="Email" required />
+          <input
+            type="password"
+            id="reg-password"
+            placeholder="Password"
+            required
+          />
+          <button type="submit">Register</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      let map, clickedMarker;
+      const tokenKey = "authToken";
+
+      // Navigation logic
+      const sections = document.querySelectorAll("#sections > div");
+      document.getElementById("nav-home").addEventListener("click", () => {
+        navigateTo("home-section");
+      });
+      document.getElementById("nav-login").addEventListener("click", () => {
+        navigateTo("login-section");
+      });
+      document.getElementById("nav-register").addEventListener("click", () => {
+        navigateTo("register-section");
+      });
+
+      function navigateTo(sectionId) {
+        sections.forEach((section) => {
+          section.classList.remove("active");
+        });
+        document.getElementById(sectionId).classList.add("active");
+      }
+
+      // Initialize the map
+      function initMap() {
+        const defaultLocation = { lat: 40.7128, lng: -74.006 };
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: defaultLocation,
+          zoom: 13,
+        });
+
+        map.addListener("click", (event) => {
+          const latitude = event.latLng.lat();
+          const longitude = event.latLng.lng();
+
+          if (clickedMarker) clickedMarker.setMap(null);
+
+          clickedMarker = new google.maps.Marker({
+            position: { lat: latitude, lng: longitude },
+            map: map,
+            title: "Selected Location",
+          });
+
+          fetchNearbyHospitals(latitude, longitude)
+            .then((hospitals) => {
+              displayHospitalsOnMap(hospitals);
+              displayHospitalsInList(hospitals);
+            })
+            .catch((error) =>
+              console.error("Error fetching nearby hospitals:", error)
+            );
+        });
+
+        fetchNearbyHospitals(defaultLocation.lat, defaultLocation.lng).then(
+          (hospitals) => {
+            displayHospitalsOnMap(hospitals);
+            displayHospitalsInList(hospitals);
+          }
+        );
+      }
+
+      // Fetch nearby hospitals
+      async function fetchNearbyHospitals(latitude, longitude) {
+        const response = await fetch(
+          `/nearby_hospitals?latitude=${latitude}&longitude=${longitude}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch nearby hospitals");
+        return await response.json();
+      }
+
+      function displayHospitalsOnMap(hospitals) {
+        hospitals.forEach((hospital) => {
+          const marker = new google.maps.Marker({
+            position: hospital.location,
+            map: map,
+            title: hospital.name,
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<h3>${hospital.name}</h3><p>${hospital.address}</p>`,
+          });
+
+          marker.addListener("click", () => infoWindow.open(map, marker));
+        });
+      }
+
+      function displayHospitalsInList(hospitals) {
+        const list = document.getElementById("hospital-list");
+        list.innerHTML = hospitals.length
+          ? hospitals
+              .map(
+                (hospital) =>
+                  `<li><h3>${hospital.name}</h3><p>${hospital.address}</p></li>`
+              )
+              .join("")
+          : "<li>No hospitals found.</li>";
+      }
+
+      async function fetchHospitals() {
+        try {
+          const response = await fetch("/hospitals");
+          if (!response.ok) {
+            throw new Error("Failed to fetch hospitals");
+          }
+          const data = await response.json(); // `data` contains `hospitals` and `message`
+          console.log("Fetched Hospitals:", data);
+
+          // Ensure `hospitals` is an array
+          const hospitals = data.hospitals || [];
+          const hospitalSelect = document.getElementById("hospital-select");
+
+          hospitalSelect.innerHTML = hospitals
+            .map(
+              (hospital) =>
+                `<option value="${hospital.hospital_id}">${hospital.name}</option>`
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error fetching hospitals:", error.message);
+          alert("Error fetching hospitals. Please try again.");
+        }
+      }
+
+      async function fetchDoctors() {
+        const hospitalId = document.getElementById("hospital-select").value;
+        if (!hospitalId) return;
+
+        try {
+          const response = await fetch(`/doctors?hospital_id=${hospitalId}`);
+          if (!response.ok) {
+            throw new Error("Failed to fetch doctors");
+          }
+          const doctors = await response.json();
+          console.log("Fetched Doctors:", doctors);
+
+          const doctorSelect = document.getElementById("doctor-select");
+          doctorSelect.innerHTML = doctors
+            .map(
+              (doctor) =>
+                `<option value="${doctor.doctor_id}">${doctor.name} (${doctor.specialization})</option>`
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error fetching doctors:", error.message);
+          alert("Error fetching doctors. Please try again.");
+        }
+      }
+
+      document
+        .getElementById("appointment-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const doctorId = document.getElementById("doctor-select").value; // Get selected doctor ID
+          const date = document.getElementById("appointment-date").value; // Get selected appointment date (ISO format)
+          const time = document.getElementById("appointment-time").value; // Get selected time (HH:MM format)
+          const token = localStorage.getItem("authToken"); // Get the JWT token from localStorage
+
+          if (!token) {
+            alert("Please log in to book an appointment.");
+            return;
+          }
+
+          try {
+            // Send the request to the backend to create the appointment
+
+            const response = await fetch("/appointments", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`, // Include token in the Authorization header
+              },
+              body: JSON.stringify({
+                doctor_id: doctorId,
+                date: date,
+                time: time,
+              }),
+            });
+            console.log("hello");
+
+            if (!response.ok) throw new Error("Failed to book appointment");
+            alert("Appointment booked successfully!");
+          } catch (error) {
+            console.error("Error booking appointment:", error);
+            alert("Error booking appointment. Please try again.");
+          }
+        });
+
+      // Handle login
+      document
+        .getElementById("login-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
+
+          try {
+            // Send the login request to the backend
+            const response = await fetch("/login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ email, password }),
+            });
+
+            // If the response is not ok, throw an error
+            if (!response.ok) throw new Error("Login failed");
+
+            // Get the response data, including the token
+            const { token } = await response.json();
+
+            // Save the token to localStorage
+            localStorage.setItem("authToken", token);
+
+            // Display success message
+            alert("Login successful!");
+
+            // Navigate to the home section
+            navigateTo("home-section");
+
+            // Show logout button and hide login/register
+            document.getElementById("logout-btn").style.display = "block";
+            document.getElementById("nav-login").style.display = "none";
+            document.getElementById("nav-register").style.display = "none";
+          } catch (error) {
+            console.error("Error logging in:", error);
+            alert("Error logging in. Please try again.");
+          }
+        });
+
+      // Handle logout
+      document.getElementById("logout-btn").addEventListener("click", () => {
+        // Remove token from localStorage
+        localStorage.removeItem("authToken");
+        alert("Logged out successfully!");
+
+        // Navigate back to login section
+        navigateTo("login-section");
+
+        // Hide logout button and show login/register
+        document.getElementById("logout-btn").style.display = "none";
+        document.getElementById("nav-login").style.display = "block";
+        document.getElementById("nav-register").style.display = "block";
+      });
+
+      // Handle registration
+      document
+        .getElementById("register-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const name = document.getElementById("reg-name").value;
+          const email = document.getElementById("reg-email").value;
+          const password = document.getElementById("reg-password").value;
+
+          console.log("Register Payload:", { name, email, password });
+
+          try {
+            const response = await fetch("/register", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ name, email, password }),
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(errorText); // Display backend error message in the console
+            }
+
+            alert("Registration successful! Please log in.");
+            navigateTo("login-section");
+          } catch (error) {
+            console.error("Error registering:", error.message);
+            alert("Error registering: " + error.message); // Display a more descriptive error to the user
+          }
+        });
+
+      // Initialize dropdowns on page load
+      fetchHospitals();
+      fetchDoctors();
+    </script>
+  </body>
+</html>
