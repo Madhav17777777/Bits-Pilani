@@ -10,9 +10,10 @@ from passlib.context import CryptContext
 import jwt
 from datetime import timedelta
 import bcrypt
+from typing import Set
 
 # Firebase Initialization
-cred = credentials.Certificate("C:\\Users\\madha\\OneDrive\\Desktop\\health_records_app\\hospital-f2856-firebase-adminsdk-q3yr6-635eb65c61.json")
+cred = credentials.Certificate("C:\\Users\\ayush\\OneDrive\\Desktop\\final_hackathon\\Bits-Pilani\\hospital-f2856-firebase-adminsdk-q3yr6-635eb65c61.json")
 initialize_app(cred)
 db = firestore.client()
 
@@ -114,6 +115,7 @@ async def login_user(request: LoginRequest):
         return {"message": "Login successful", "token": token}
 
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -176,31 +178,51 @@ def get_doctors(hospital_id: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+token_blacklist: Set[str] = set()
 
-# Appointments
+@app.post("/logout")
+def logout(authorization: str = Header(None)):
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+
+    try:
+        # Extract the token from the Authorization header
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=400, detail="Invalid Authorization header format")
+        
+        token = authorization.split(" ")[1]
+
+        # Add the token to the blacklist
+        token_blacklist.add(token)
+        return {"message": "Logout successful"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+# Modify the `get_current_user` function to check the blacklist
 def get_current_user(authorization: str = Header(None)):
     if authorization is None:
         raise HTTPException(status_code=403, detail="Authorization header missing")
 
     try:
-        # Check if the Authorization header is in the correct format
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=403, detail="Invalid Authorization header format")
-
-        token = authorization.split(" ")[1]  # Extract the token part
         
-        # Decode the JWT token
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")  # Assuming 'sub' contains the user_id
+        token = authorization.split(" ")[1]
 
+        # Check if the token is blacklisted
+        if token in token_blacklist:
+            raise HTTPException(status_code=401, detail="Token is invalid or has been logged out")
+
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=403, detail="Could not validate credentials")
-
         return user_id
-    except JWTError:
-        raise HTTPException(status_code=403, detail="Could not validate credentials")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
         raise HTTPException(status_code=403, detail=f"Invalid token: {str(e)}")
+
 @app.post("/appointments")
 def create_appointment(appointment: Appointment, user_id: str = Depends(get_current_user)):
     try:
@@ -241,6 +263,9 @@ def get_nearby_hospitals(latitude: float, longitude: float):
         return nearby_hospitals
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching nearby hospitals: {str(e)}")
+
+
+
 @app.get("/", response_class=HTMLResponse)
 async def get_home():
     with open("index.html", "r") as f:

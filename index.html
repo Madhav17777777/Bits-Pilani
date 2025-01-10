@@ -10,74 +10,136 @@
       defer
     ></script>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 20px;
-      }
-      h1,
-      h2,
-      h3 {
-        color: #333;
-      }
-      #map {
-        height: 400px;
-        width: 100%;
-        margin-bottom: 20px;
-      }
-      #hospital-list {
-        margin-top: 20px;
-        padding: 0;
-        list-style-type: none;
-      }
-      #hospital-list li {
-        margin: 10px 0;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        background: #f9f9f9;
-      }
-      select,
-      input,
-      button {
-        padding: 10px;
-        margin: 10px 0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        width: 100%;
-        max-width: 300px;
-      }
-      button {
-        background-color: #007bff;
-        color: white;
-        cursor: pointer;
-      }
-      button:hover {
-        background-color: #0056b3;
-      }
-      nav {
-        display: flex;
-        justify-content: space-around;
-        background-color: #007bff;
-        color: white;
-        padding: 10px;
-        margin-bottom: 20px;
-      }
-      nav a {
-        color: white;
-        text-decoration: none;
-        font-weight: bold;
-        cursor: pointer;
-      }
-      nav a:hover {
-        text-decoration: underline;
-      }
-      #sections > div {
-        display: none;
-      }
-      #sections > div.active {
-        display: block;
-      }
+     /* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    color: #333;
+    background-color: #f7f9fc;
+    line-height: 1.6;
+    
+  }
+  h1, h2, h3 {
+    color: #333;
+    text-align: center;
+  }
+  a {
+    text-decoration: none;
+  }
+  
+  /* Navigation */
+  nav {
+    display: flex;
+    justify-content: center;
+    background-color: #007bff;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+  nav a {
+    color: white;
+    margin: 0 15px;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: color 0.3s ease;
+  }
+  nav a:hover {
+    color: #d4e2ff;
+  }
+  
+  /* Sections */
+  #sections {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  #sections > div {
+    display: none;
+  }
+  #sections > div.active {
+    display: block;
+  }
+  
+  /* Form Styling */
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 20px 0;
+  }
+  input, select, button {
+    width: 90%;
+    max-width: 400px;
+    margin: 10px 0;
+    padding: 12px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  input:focus, select:focus {
+    border-color: #007bff;
+    outline: none;
+  }
+  button {
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+  button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+  /* Map Section */
+  #map {
+    height: 400px;
+    width: 100%;
+    border-radius: 5px;
+    margin: 20px 0;
+    border: 1px solid #ccc;
+  }
+  
+  /* Hospital List */
+  #hospital-list {
+    list-style: none;
+    padding: 0;
+  }
+  #hospital-list li {
+    padding: 15px;
+    margin: 10px 0;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  }
+  #hospital-list li h3 {
+    margin: 0 0 10px;
+    color: #007bff;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    nav {
+      flex-direction: column;
+      align-items: center;
+    }
+    nav a {
+      margin: 5px 0;
+    }
+    input, select, button {
+      width: 100%;
+    }
+  }
+  
     </style>
   </head>
   <body>
@@ -90,9 +152,14 @@
       <a id="nav-register">Register</a>
     </nav>
 
+    <div id="logout-section" style="display: none;">
+      <button id="logout-btn">Logout</button>
+    </div>
+
     <div id="sections">
       <!-- Home Section -->
       <div id="home-section" class="active">
+        
         <!-- Hospital Dropdown -->
         <h2>Select a Hospital</h2>
         <select id="hospital-select" onchange="fetchDoctors()">
@@ -141,7 +208,7 @@
           />
           <button type="submit">Login</button>
         </form>
-        <button id="logout-btn" style="display: none">Logout</button>
+       
       </div>
 
       <!-- Register Section -->
@@ -176,6 +243,19 @@
       document.getElementById("nav-register").addEventListener("click", () => {
         navigateTo("register-section");
       });
+
+    
+
+        window.onload = function () {
+  const token = localStorage.getItem("authToken");
+  const logoutSection = document.getElementById("logout-section");
+
+  if (token) {
+    logoutSection.style.display = "block"; // Show logout button if logged in
+  } else {
+    logoutSection.style.display = "none"; // Hide logout button if not logged in
+  }
+};
 
       function navigateTo(sectionId) {
         sections.forEach((section) => {
@@ -392,19 +472,37 @@
         });
 
       // Handle logout
-      document.getElementById("logout-btn").addEventListener("click", () => {
-        // Remove token from localStorage
-        localStorage.removeItem("authToken");
-        alert("Logged out successfully!");
+      document.getElementById("logout-btn").addEventListener("click", async () => {
+  const token = localStorage.getItem("authToken");
 
-        // Navigate back to login section
-        navigateTo("login-section");
+  if (!token) {
+    alert("You are not logged in.");
+    return;
+  }
 
-        // Hide logout button and show login/register
-        document.getElementById("logout-btn").style.display = "none";
-        document.getElementById("nav-login").style.display = "block";
-        document.getElementById("nav-register").style.display = "block";
-      });
+  try {
+    const response = await fetch("/logout", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.ok) {
+      localStorage.removeItem("authToken");
+      alert("Logout successful.");
+      window.location.reload();
+    } else {
+      const errorData = await response.json();
+      alert(`Failed to logout: ${errorData.detail}`);
+    }
+  } catch (error) {
+    console.error("Error during logout:", error);
+    alert("An error occurred during logout. Please try again.");
+  }
+});
+
 
       // Handle registration
       document
