@@ -79,7 +79,9 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
+@app.head("/")
+async def root_head():
+    return {"message": "HEAD request is allowed"}
 # User Registration
 @app.post("/register")
 async def register_user(user: User):
