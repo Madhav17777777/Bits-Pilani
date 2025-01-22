@@ -20,7 +20,7 @@ load_dotenv()
 
 
 # Firebase Initialization
-cred = credentials.Certificate(".\hospital-f2856-firebase-adminsdk-q3yr6-635eb65c61.json")
+cred = credentials.Certificate(`/etc/secrets/hospital-f2856-firebase-adminsdk-q3yr6-635eb65c61.json`)
 initialize_app(cred)
 db = firestore.client()
 
