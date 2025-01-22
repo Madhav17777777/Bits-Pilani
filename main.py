@@ -1,4 +1,8 @@
+import os
+
 from fastapi import FastAPI, HTTPException,Header
+from dotenv import load_dotenv
+
 from fastapi.responses import HTMLResponse
 from fastapi import Depends
 from pydantic import BaseModel
@@ -11,17 +15,22 @@ import jwt
 from datetime import timedelta
 import bcrypt
 from typing import Set
+load_dotenv()
+
+
 
 # Firebase Initialization
-cred = credentials.Certificate("C:\\Users\\ayush\\OneDrive\\Desktop\\final_hackathon\\Bits-Pilani\\hospital-f2856-firebase-adminsdk-q3yr6-635eb65c61.json")
+cred = credentials.Certificate(".\hospital-f2856-firebase-adminsdk-q3yr6-635eb65c61.json")
 initialize_app(cred)
 db = firestore.client()
 
 # FastAPI App
 app = FastAPI()
 
-SECRET_KEY = "3c99f638181a85ca5601bb9e6a318be9de483c21c60bc49205981afa094a2ffd"
-ALGORITHM = "HS256"
+
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Password hashing
@@ -246,7 +255,7 @@ def create_appointment(appointment: Appointment, user_id: str = Depends(get_curr
 @app.get("/nearby_hospitals")
 def get_nearby_hospitals(latitude: float, longitude: float):
     try:
-        api_key = "AIzaSyAXwZjPuXKJaDRNBf3qGc_sTTz5P4qB-NA"
+        api_key = os.getenv("GOOGLE_MAPS_API_KEY")
         radius = 5000  # 5 km radius
         url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={latitude},{longitude}&radius={radius}&type=hospital&key={api_key}"
         response = requests.get(url)
